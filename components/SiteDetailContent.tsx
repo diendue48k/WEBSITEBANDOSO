@@ -424,12 +424,6 @@ export const SiteDetailContent: React.FC<SiteDetailContentProps> = ({ siteId, is
     return Array.from(personsMap.values());
   }, [detail]);
 
-  const siteAge = useMemo(() => {
-      if (!detail?.established_year) return null;
-      return `${new Date().getFullYear() - detail.established_year} năm tuổi`;
-  }, [detail?.established_year]);
-
-
   // Scroll selected image thumbnail into view
   useEffect(() => {
     if(isModal && imageThumbnailRefs.current[selectedImageIndex]) {

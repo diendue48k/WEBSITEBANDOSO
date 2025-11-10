@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, useMap, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Site } from '../types';
@@ -49,35 +49,11 @@ const MapController: React.FC<{ selectedSite: Site | null; isModalOpen: boolean;
     return () => clearTimeout(timer);
   }, [isModalOpen, map]);
 
-  // Effect to fly to and pan for a selected site
+  // Effect to fly to a selected site. The panning is now handled by the Popup's autoPan.
   useEffect(() => {
     if (selectedSite) {
         const targetLatLng: L.LatLngTuple = [selectedSite.latitude, selectedSite.longitude];
-        
         map.flyTo(targetLatLng, 15, { animate: true, duration: 1.0 });
-        
-        const panForUi = () => {
-            const isMobile = window.innerWidth < 768; // Tailwind 'md' breakpoint
-
-            if (isMobile) {
-                // On mobile, the header is fixed and overlaps the map.
-                const mobileHeader = document.querySelector<HTMLElement>('header.md\\:hidden');
-                const headerHeight = mobileHeader?.offsetHeight || 0;
-                
-                // We need to shift the map's center down to be in the middle of the visible area.
-                // To do this, we pan the map itself UP. A negative y-offset pans up.
-                const yOffset = -headerHeight / 2;
-
-                if (yOffset !== 0) {
-                    map.panBy([0, yOffset], { animate: true, duration: 0.5 });
-                }
-            }
-            // On desktop, the sidebar is part of the flex layout and does not overlap the map.
-            // Therefore, no horizontal panning is required.
-        };
-
-        // After the fly animation finishes, pan the map to center the location in the visible area.
-        map.once('moveend', panForUi);
     }
   }, [selectedSite, map]);
 
@@ -91,12 +67,13 @@ interface SiteMarkerProps {
     onShowDetailModal: () => void;
     defaultIcon: L.DivIcon;
     selectedIcon: L.DivIcon;
+    autoPanPadding: L.Point;
 }
 
 /**
  * A component for rendering a single site marker.
  */
-const SiteMarker: React.FC<SiteMarkerProps> = ({ site, isSelected, onSiteSelect, onShowDetailModal, defaultIcon, selectedIcon }) => {
+const SiteMarker: React.FC<SiteMarkerProps> = ({ site, isSelected, onSiteSelect, onShowDetailModal, defaultIcon, selectedIcon, autoPanPadding }) => {
     const markerRef = useRef<L.Marker>(null);
 
     // Effect to programmatically open the popup when a site is selected
@@ -129,7 +106,7 @@ const SiteMarker: React.FC<SiteMarkerProps> = ({ site, isSelected, onSiteSelect,
                 className="custom-popup"
                 minWidth={256}
                 eventHandlers={popupEventHandlers}
-                autoPan={false}
+                autoPanPadding={autoPanPadding}
             >
                 <div className="w-64">
                   <SiteDetailContent 
@@ -156,6 +133,35 @@ interface MapViewProps {
 
 export const MapView: React.FC<MapViewProps> = ({ sites, selectedSite, onSiteSelect, onShowDetailModal, isModalOpen }) => {
   const daNangCenter: [number, number] = [16.0544, 108.2022];
+  const [autoPanPadding, setAutoPanPadding] = useState<L.Point>(L.point(0, 0));
+
+  // Effect to calculate padding for autoPan, making it aware of the UI chrome (sidebar/header)
+  useEffect(() => {
+    const calculatePadding = () => {
+        const isMobile = window.innerWidth < 768; // Tailwind 'md' breakpoint
+        let top = 20; // Default vertical padding
+        let left = 20; // Default horizontal padding
+
+        if (isMobile) {
+            const mobileHeader = document.querySelector<HTMLElement>('header.md\\:hidden');
+            top = (mobileHeader?.offsetHeight || 0) + 20; // Add padding below header
+        } else {
+            const sidebar = document.querySelector<HTMLElement>('aside.md\\:relative');
+            left = (sidebar?.offsetWidth || 0) + 20; // Add padding right of sidebar
+        }
+        
+        setAutoPanPadding(L.point(left, top));
+    };
+    
+    // A small delay to ensure UI elements are rendered
+    const timer = setTimeout(calculatePadding, 100);
+    window.addEventListener('resize', calculatePadding);
+    
+    return () => {
+        clearTimeout(timer);
+        window.removeEventListener('resize', calculatePadding);
+    };
+  }, []);
   
   // Memoize icons so they are not recreated on every render
   const defaultIcon = useMemo(() => createMarkerIcon(false), []);
@@ -177,6 +183,7 @@ export const MapView: React.FC<MapViewProps> = ({ sites, selectedSite, onSiteSel
             onShowDetailModal={onShowDetailModal}
             defaultIcon={defaultIcon}
             selectedIcon={selectedIcon}
+            autoPanPadding={autoPanPadding}
           />
       ))}
     </MapContainer>

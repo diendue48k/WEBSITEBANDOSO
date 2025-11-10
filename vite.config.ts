@@ -2,6 +2,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
+  base: '/WEBSITEBANDOSO/',
   plugins: [react()],
-  base: '/da-nang-historical-map/', // 👈 tên repo GitHub của bạn
 })

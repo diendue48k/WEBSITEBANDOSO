@@ -552,7 +552,7 @@ export const SiteDetailContent: React.FC<SiteDetailContentProps> = ({ siteId, is
                             <BuildingLibraryIcon className="h-5 w-5 text-slate-400 mt-0.5 flex-shrink-0" />
                             <div>
                                 <strong className="font-semibold text-slate-200 block">Năm thành lập</strong>
-                                <span className="text-slate-300">{detail.established_year} {siteAge && `(${siteAge})`}</span>
+                                <span className="text-slate-300">{detail.established_year}</span>
                             </div>
                         </li>
                     )}
